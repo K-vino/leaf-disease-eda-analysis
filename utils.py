@@ -7,44 +7,60 @@ import streamlit as st
 
 @st.cache_data
 def load_data(dataset_path):
-    """Crawl the dataset directory and return a DataFrame."""
+    """Recursively find all images in the dataset path."""
     data_list = []
     if not os.path.exists(dataset_path):
         return pd.DataFrame()
 
-    for split in ['train', 'test', 'validation']:
+    valid_extensions = ('.jpg', '.jpeg', '.png', '.bmp', '.webp')
+    
+    for split in ['train', 'test', 'validation']:\
         split_path = os.path.join(dataset_path, split)
         if not os.path.exists(split_path):
             continue
             
-        for class_name in os.listdir(split_path):
-            class_path = os.path.join(split_path, class_name)
-            if os.path.isdir(class_path):
-                for image_name in os.listdir(class_path):
+        # Use os.walk to handle any level of nesting
+        for root, dirs, files in os.walk(split_path):
+            for file in files:
+                if file.lower().endswith(valid_extensions):
+                    file_path = os.path.join(root, file)
+                    
+                    # Extract label information
+                    # We'll use the folder name containing the image as the label
+                    label = os.path.basename(root)
+                    
+                    # Also keep track of the parent folder (Crop)
+                    parent_folder = os.path.basename(os.path.dirname(root))
+                    
+                    # Determine condition
+                    condition = 'Healthy' if 'healthy' in label.lower() or 'healthy' in parent_folder.lower() else 'Diseased'
+                    
                     data_list.append({
-                        'image_path': os.path.join(class_path, image_name),
-                        'label': class_name,
+                        'image_path': file_path,
+                        'label': label,
+                        'crop': parent_folder if parent_folder != split else label,
                         'split': split,
-                        'condition': 'Healthy' if 'healthy' in class_name.lower() else 'Diseased'
+                        'condition': condition
                     })
+                    
     return pd.DataFrame(data_list)
 
 def get_image_properties(image_path):
     """Extract size, color means, and brightness from an image."""
     try:
+        # Check if it's a file, just in case
+        if not os.path.isfile(image_path):
+            return None
+            
         img = Image.open(image_path)
         width, height = img.size
-        img_array = np.array(img)
+        img_array = np.array(img.convert('RGB')) # Ensure RGB
         
-        # Handle grayscale or RGBA images
-        if len(img_array.shape) == 3:
-            mean_r = np.mean(img_array[:, :, 0])
-            mean_g = np.mean(img_array[:, :, 1])
-            mean_b = np.mean(img_array[:, :, 2])
-        else:
-            mean_r = mean_g = mean_b = np.mean(img_array)
-            
+        mean_r = np.mean(img_array[:, :, 0])
+        mean_g = np.mean(img_array[:, :, 1])
+        mean_b = np.mean(img_array[:, :, 2])
         brightness = np.mean(img_array)
+        
         return width, height, mean_r, mean_g, mean_b, brightness
     except Exception as e:
         return None
