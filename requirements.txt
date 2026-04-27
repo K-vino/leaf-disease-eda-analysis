@@ -5,6 +5,6 @@ seaborn
 opencv-python
 pillow
 plotly
-ipywidgets
 tqdm
 scikit-learn
+streamlit
