@@ -1,0 +1,10 @@
+pandas
+numpy
+matplotlib
+seaborn
+opencv-python
+pillow
+plotly
+ipywidgets
+tqdm
+scikit-learn
